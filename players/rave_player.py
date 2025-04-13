@@ -31,7 +31,7 @@ class RAVENode:
         tried_moves = [child.move for child in self.children]
         return len(tried_moves) >= len(self.untried_moves)
 
-    def best_child(self, c_param=1.4, k_grave=300):
+    def best_child(self, c_param=1.4):
         def grave_score(child):
             move = child.move
             q = child.wins / child.visits if child.visits > 0 else 0
