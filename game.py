@@ -4,7 +4,7 @@ import math
 
 from board import WINDOW_WIDTH, WINDOW_HEIGHT, init_gird, draw_board, get_cor_at_pos
 from human_player import HumanPlayer
-from players.grave_player import GRAVEPlayer
+from players.rave_player import RAVEPlayer
 from players.mcts_player import MCTSPlayer
 from players.random_player import RandomPlayer
 
@@ -15,10 +15,10 @@ pygame.display.set_caption("Chinese Checker - 2 Players")
 GRID = {}  # {(q, r): {'pos': (x, y), 'piece': name1/name2/None}}
 PLAYER1 = None
 PLAYER2 = None
-NAME1 = "ai"
-NAME2 = "ai2"
-WIN_THRESHOLD = 5  # 0-10
-
+NAME1 = "RAVE"
+NAME2 = "Random"
+WIN_THRESHOLD = 5 # 1-10
+MAX_MOVE_COUNT = 200
 
 def switch_player(player):
     global PLAYER1, PLAYER2
@@ -69,20 +69,26 @@ def main():
 
     # PLAYER1 = RandomPlayer(NAME1, corner_cors2, WIN_THRESHOLD)
     # PLAYER1 = MCTSPlayer(NAME1, corner_cors2, WIN_THRESHOLD)
-    PLAYER1 = GRAVEPlayer(NAME1, corner_cors2, WIN_THRESHOLD)
+    PLAYER1 = RAVEPlayer(NAME1, corner_cors2, WIN_THRESHOLD)
     # PLAYER2 = HumanPlayer(NAME2, corner_cors1, WIN_THRESHOLD)
     PLAYER2 = RandomPlayer(NAME2, corner_cors1, WIN_THRESHOLD)
     player = PLAYER2
     selected_piece = None
 
+    count = 0
     while True:
         clock.tick(30)
         draw_board(screen, GRID, selected_piece)
+
+        font = pygame.font.SysFont(None, 36)
+        text = font.render(f"Move Count: {count}", True, (0, 0, 0))
+        screen.blit(text, (10, 10))
+
         pygame.display.flip()
 
         new_turn = None
         if player.role != "human":
-            pygame.time.delay(500)
+            pygame.time.delay(300)
             new_turn = ai_move(player)
 
         for event in pygame.event.get():
@@ -98,9 +104,18 @@ def main():
             pass
         elif new_turn== "win":
             print(f"{player.name} win")
+            font = pygame.font.SysFont(None, 36)
+            text = font.render(f"{player.name} Win", True, (255, 0, 0))
+            screen.blit(text, (WINDOW_WIDTH // 2 - 50, 10))
+            pygame.display.flip()
+            pygame.time.delay(5000)
             break
         else:
             player = new_turn
+            count += 1
+            if count >= MAX_MOVE_COUNT:
+                print("Too many moves.")
+                break
 
 
 if __name__ == '__main__':

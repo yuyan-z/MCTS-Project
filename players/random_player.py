@@ -21,7 +21,7 @@ class RandomPlayer:
             moves_piece = [(piece, cor) for cor in cors]
             moves.extend(moves_piece)
 
-        print("Possible moves:", moves)
+        print("Ramdom moves:", moves)
         return random.choice(moves)
 
     def check_win(self, grid):
