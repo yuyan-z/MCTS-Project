@@ -1,1 +1,1 @@
-# ChineseChecker
+# Monte-Carlo search and games
