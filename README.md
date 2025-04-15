@@ -1,1 +1,1 @@
-# Two-Player Chinese Checkers
+# ChineseChecker

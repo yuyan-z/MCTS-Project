@@ -18,9 +18,9 @@ PLAYER1 = None
 PLAYER2 = None
 NAME1 = "GRAVE"
 NAME2 = "MCTS"
-WIN_THRESHOLD = 10 # 1-10
+WIN_THRESHOLD = 6 # 1-10
 MAX_MOVE_COUNT = 200
-C = 1.8
+C = 1.4
 
 # TIME_DELAY = 100
 TIME_DELAY = 0
@@ -143,7 +143,7 @@ def main():
 
 if __name__ == '__main__':
     win_counts = {NAME1: 0, NAME2: 0}
-    n = 400
+    n = 300
 
     for _ in range(n):
         winner = main()
