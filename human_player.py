@@ -47,3 +47,7 @@ class HumanPlayer:
         pieces = self.get_pieces(grid)
         count = sum(1 for piece in pieces if piece in self.corner_cors)
         return count >= self.win_threshold
+
+    def get_n_pieces_corner(self, grid):
+        pieces = self.get_pieces(grid)
+        return sum(1 for p in pieces if p in self.corner_cors)

@@ -15,6 +15,7 @@ OFFSET_X = WINDOW_WIDTH // 2
 OFFSET_Y = WINDOW_HEIGHT // 2
 
 PIECES_HEIGHTS = 4  # 0.5*(k+1)(k) = 10
+# PIECES_HEIGHTS = 3  # 0.5*(k+1)(k) = 6
 
 NAME1 = None
 # BOARD_SIZE = 8

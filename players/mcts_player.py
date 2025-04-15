@@ -9,7 +9,7 @@ class MCTSNode:
         self.move = move
         self.children = []
         self.visits = 0
-        self.wins = 0
+        self.total_reward = 0
         self.untried_moves = None
 
     def get_all_moves(self, player_name):
@@ -29,18 +29,18 @@ class MCTSNode:
     def best_child(self, c_param=1.4):
         return max(
             self.children,
-            key=lambda child: (child.wins / child.visits if child.visits > 0 else 0)
+            key=lambda child: (child.total_reward / child.visits if child.visits > 0 else 0)
                                + c_param * math.sqrt(math.log(self.visits + 1) / (child.visits + 1))
         )
 
 
 class MCTSPlayer:
-    def __init__(self, name, corner_cors, win_threshold, simulations=50):
+    def __init__(self, name, corner_cors, simulations=100, c=1.4):
         self.role = "mcts"
         self.name = name
         self.corner_cors = corner_cors
-        self.win_threshold = win_threshold
         self.simulations = simulations
+        self.c = c
 
     def get_pieces(self, grid):
         return [cor for cor, cell in grid.items() if cell['piece'] == self.name]
@@ -62,7 +62,7 @@ class MCTSPlayer:
             if not node.is_fully_expanded(self.name):
                 return self.expand(node)
             else:
-                node = node.best_child()
+                node = node.best_child(self.c)
         return node
 
     def expand(self, node):
@@ -96,7 +96,7 @@ class MCTSPlayer:
     def backup(self, node, reward):
         while node is not None:
             node.visits += 1
-            node.wins += reward
+            node.total_reward += reward
             node = node.parent
 
     def simulate_move(self, state, move):
@@ -107,8 +107,8 @@ class MCTSPlayer:
         return new_state
 
     def is_terminal(self, state):
-        pieces = [cor for cor, cell in state.items() if cell['piece'] == self.name]
-        return sum(1 for p in pieces if p in self.corner_cors) >= self.win_threshold
+        pieces = self.get_pieces(state)
+        return all(cor in self.corner_cors for cor in pieces)
 
     def hex_distance(self, a, b):
         aq, ar = a
@@ -118,7 +118,6 @@ class MCTSPlayer:
     def deepcopy_grid(self, grid):
         return {cor: cell.copy() for cor, cell in grid.items()}
 
-    def check_win(self, grid):
+    def get_n_pieces_corner(self, grid):
         pieces = self.get_pieces(grid)
-        count = sum(1 for piece in pieces if piece in self.corner_cors)
-        return count >= self.win_threshold
+        return sum(1 for p in pieces if p in self.corner_cors)

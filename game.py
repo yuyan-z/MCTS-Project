@@ -1,10 +1,11 @@
+import pandas as pd
 import pygame
 import sys
 import math
 
 from board import WINDOW_WIDTH, WINDOW_HEIGHT, init_gird, draw_board, get_cor_at_pos
 from human_player import HumanPlayer
-from players.rave_player import RAVEPlayer
+from players.grave_player import GRAVEPlayer
 from players.mcts_player import MCTSPlayer
 from players.random_player import RandomPlayer
 
@@ -15,10 +16,14 @@ pygame.display.set_caption("Chinese Checker - 2 Players")
 GRID = {}  # {(q, r): {'pos': (x, y), 'piece': name1/name2/None}}
 PLAYER1 = None
 PLAYER2 = None
-NAME1 = "RAVE"
-NAME2 = "Random"
-WIN_THRESHOLD = 5 # 1-10
+NAME1 = "GRAVE"
+NAME2 = "MCTS"
+WIN_THRESHOLD = 10 # 1-10
 MAX_MOVE_COUNT = 200
+C = 1.8
+
+# TIME_DELAY = 100
+TIME_DELAY = 0
 
 def switch_player(player):
     global PLAYER1, PLAYER2
@@ -33,7 +38,7 @@ def ai_move(ai):
         GRID[cor]['piece'] = GRID[piece]['piece']
         GRID[piece]['piece'] = None
 
-        if ai.check_win(GRID):
+        if ai.get_n_pieces_corner(GRID) >= WIN_THRESHOLD:
             turn = "win"
         else:
             turn = switch_player(ai)
@@ -67,16 +72,19 @@ def main():
     GRID, corner_cors1, corner_cors2 = init_gird(NAME1, NAME2)
     print("GRID: ", GRID)
 
-    # PLAYER1 = RandomPlayer(NAME1, corner_cors2, WIN_THRESHOLD)
-    # PLAYER1 = MCTSPlayer(NAME1, corner_cors2, WIN_THRESHOLD)
-    PLAYER1 = RAVEPlayer(NAME1, corner_cors2, WIN_THRESHOLD)
-    # PLAYER2 = HumanPlayer(NAME2, corner_cors1, WIN_THRESHOLD)
-    PLAYER2 = RandomPlayer(NAME2, corner_cors1, WIN_THRESHOLD)
+    # PLAYER1 = RandomPlayer(NAME1, corner_cors2)
+    # PLAYER1 = MCTSPlayer(NAME1, corner_cors2, simulations=300)
+    PLAYER1 = GRAVEPlayer(NAME1, corner_cors2, simulations=300, c=C)
+    # PLAYER2 = HumanPlayer(NAME2, corner_cors1)
+    # PLAYER2 = RandomPlayer(NAME2, corner_cors1)
+    PLAYER2 = MCTSPlayer(NAME2, corner_cors1, simulations=300, c=C)
     player = PLAYER2
     selected_piece = None
+    winner = None
+    isEnd = False
 
     count = 0
-    while True:
+    while not isEnd:
         clock.tick(30)
         draw_board(screen, GRID, selected_piece)
 
@@ -84,11 +92,17 @@ def main():
         text = font.render(f"Move Count: {count}", True, (0, 0, 0))
         screen.blit(text, (10, 10))
 
+        font = pygame.font.SysFont(None, 24)
+        text = font.render(f"Player 1: {PLAYER1.role}", True, (0, 0, 0))
+        screen.blit(text, (10, 50))
+        text = font.render(f"Player 2: {PLAYER2.role}", True, (0, 0, 0))
+        screen.blit(text, (10, WINDOW_HEIGHT - 50))
+
         pygame.display.flip()
 
         new_turn = None
         if player.role != "human":
-            pygame.time.delay(300)
+            pygame.time.delay(TIME_DELAY)
             new_turn = ai_move(player)
 
         for event in pygame.event.get():
@@ -102,21 +116,53 @@ def main():
 
         if new_turn is None:
             pass
-        elif new_turn== "win":
-            print(f"{player.name} win")
-            font = pygame.font.SysFont(None, 36)
-            text = font.render(f"{player.name} Win", True, (255, 0, 0))
-            screen.blit(text, (WINDOW_WIDTH // 2 - 50, 10))
-            pygame.display.flip()
-            pygame.time.delay(5000)
-            break
+        elif new_turn == "win":
+            winner = player.name
+            isEnd = True
         else:
             player = new_turn
             count += 1
+
             if count >= MAX_MOVE_COUNT:
                 print("Too many moves.")
-                break
+                isEnd = True
+                if PLAYER1.get_n_pieces_corner(GRID) > PLAYER2.get_n_pieces_corner(GRID):
+                    winner = NAME1
+                elif PLAYER2.get_n_pieces_corner(GRID) > PLAYER1.get_n_pieces_corner(GRID):
+                    winner = NAME2
+
+        if winner:
+            print(f"{winner} Win")
+            font = pygame.font.SysFont(None, 36)
+            text = font.render(f"{winner} Win", True, (0, 0, 0))
+            screen.blit(text, (WINDOW_WIDTH // 2 - 50, 10))
+            pygame.display.flip()
+    pygame.time.delay(TIME_DELAY*10)
+    return winner
 
 
 if __name__ == '__main__':
-    main()
+    win_counts = {NAME1: 0, NAME2: 0}
+    n = 400
+
+    for _ in range(n):
+        winner = main()
+        if winner:
+            win_counts[winner] += 1
+
+    win_rates = {
+        NAME1: win_counts[NAME1] / n,
+        NAME2: win_counts[NAME2] / n
+    }
+    print(win_rates)
+
+    df = pd.DataFrame({
+        "Agent": [NAME1, NAME2],
+        "Win Rate": [win_rates[NAME1], win_rates[NAME2]],
+        "Win Count": [win_counts[NAME1], win_counts[NAME2]]
+    })
+    df.to_csv(f"win_rates_{NAME1}_{NAME2}_{C}.csv", index=False)
+
+
+
+

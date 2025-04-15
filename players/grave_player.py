@@ -10,12 +10,12 @@ class GRAVENode:
         self.move = move
         self.children = []
         self.visits = 0
-        self.wins = 0
+        self.total_reward = 0
         self.untried_moves = None
 
         # GRAVE
         self.amaf_visits = {}  # move -> int
-        self.amaf_wins = {}    # move -> float
+        self.amaf_total_reward = {}    # move -> float
 
     def get_all_moves(self, player_name):
         pieces = [cor for cor, cell in self.state.items() if cell['piece'] == player_name]
@@ -31,12 +31,12 @@ class GRAVENode:
         tried_moves = [child.move for child in self.children]
         return len(tried_moves) >= len(self.untried_moves)
 
-    def best_child(self, c_param=1.4, k_grave=300):
+    def best_child(self, c_param=1.4):
         def grave_score(child):
             move = child.move
-            q = child.wins / child.visits if child.visits > 0 else 0
+            q = child.total_reward / child.visits if child.visits > 0 else 0
             amaf_v = self.amaf_visits.get(move, 0)
-            amaf_w = self.amaf_wins.get(move, 0)
+            amaf_w = self.amaf_total_reward.get(move, 0)
             q_amaf = amaf_w / amaf_v if amaf_v > 0 else 0
 
             beta = child.visits / (child.visits + amaf_v + 1e-6)
@@ -48,12 +48,12 @@ class GRAVENode:
 
 
 class GRAVEPlayer:
-    def __init__(self, name, corner_cors, win_threshold, simulations=60):
+    def __init__(self, name, corner_cors, simulations=100, c=1.4):
         self.role = "grave"
         self.name = name
         self.corner_cors = corner_cors
-        self.win_threshold = win_threshold
         self.simulations = simulations
+        self.c = c
 
     def get_pieces(self, grid):
         return [cor for cor, cell in grid.items() if cell['piece'] == self.name]
@@ -82,7 +82,7 @@ class GRAVEPlayer:
                 played_moves.add(new_node.move)
                 return new_node, path, played_moves
             else:
-                node = node.best_child()
+                node = node.best_child(self.c)
                 played_moves.add(node.move)
 
         return node, path, played_moves
@@ -104,7 +104,7 @@ class GRAVEPlayer:
         return child
 
     def default_policy(self, state):
-        # 简单策略：棋子到目标角落的平均距离越小得分越高
+        # Minimize the average distance between chess pieces and the target angle
         pieces = [cor for cor, cell in state.items() if cell['piece'] == self.name]
         if not pieces:
             return 0
@@ -117,10 +117,10 @@ class GRAVEPlayer:
     def backup(self, path, played_moves, reward):
         for node in reversed(path):
             node.visits += 1
-            node.wins += reward
+            node.total_reward += reward
             for move in played_moves:
                 node.amaf_visits[move] = node.amaf_visits.get(move, 0) + 1
-                node.amaf_wins[move] = node.amaf_wins.get(move, 0) + reward
+                node.amaf_total_reward[move] = node.amaf_total_reward.get(move, 0) + reward
 
     def simulate_move(self, grid, move):
         new_grid = self.deepcopy_grid(grid)
@@ -129,9 +129,9 @@ class GRAVEPlayer:
         new_grid[from_cor]['piece'] = None
         return new_grid
 
-    def is_terminal(self, grid):
-        pieces = self.get_pieces(grid)
-        return sum(1 for p in pieces if p in self.corner_cors) >= self.win_threshold
+    def is_terminal(self, state):
+        pieces = self.get_pieces(state)
+        return all(cor in self.corner_cors for cor in pieces)
 
     def deepcopy_grid(self, grid):
         return {cor: cell.copy() for cor, cell in grid.items()}
@@ -141,6 +141,6 @@ class GRAVEPlayer:
         bq, br = b
         return (abs(aq - bq) + abs(ar - br) + abs((aq + ar) - (bq + br))) // 2
 
-    def check_win(self, grid):
+    def get_n_pieces_corner(self, grid):
         pieces = self.get_pieces(grid)
-        return sum(1 for p in pieces if p in self.corner_cors) >= self.win_threshold
+        return sum(1 for p in pieces if p in self.corner_cors)
